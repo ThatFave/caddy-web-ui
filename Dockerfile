@@ -20,4 +20,4 @@ EXPOSE 8080
 
 VOLUME [ "/config" ]
 
-ENTRYPOINT [ "caddy-web-ui" ]
+ENTRYPOINT [ "/caddy-web-ui" ]
