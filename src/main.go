@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	http.Handle("/", http.FileServer(http.Dir("/static")))
 
 	caddy_api := os.Getenv("CADDY_API")
 

@@ -14,6 +14,8 @@ WORKDIR /
 
 COPY --from=builder /src/caddy-web-ui .
 
+COPY --from=builder /src/static .
+
 ENV CADDY_API=""
 
 EXPOSE 8080
