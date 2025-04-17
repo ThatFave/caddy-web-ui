@@ -10,6 +10,8 @@ RUN go build .
 
 FROM busybox
 
+WORKDIR /
+
 COPY --from=builder /src/caddy-web-ui .
 
 ENV CADDY_API=""
