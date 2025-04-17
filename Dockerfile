@@ -14,7 +14,7 @@ WORKDIR /
 
 COPY --from=builder /src/caddy-web-ui .
 
-COPY --from=builder /src/static .
+COPY --from=builder /src/static /static
 
 ENV CADDY_API=""
 
