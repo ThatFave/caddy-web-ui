@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Caddy UI</title>
+  <script src="https://unpkg.com/alpinejs" defer></script>
+  <style>
+    body { font-family: sans-serif; }
+    textarea { width: 100%; height: 600px; font-family: monospace; }
+  </style>
+</head>
+<body class="p-4 text-gray-800">
+  <h1 class="text-xl font-bold mb-4">Caddy Reverse Proxy Manager</h1>
+
+  <div x-data="caddyConfig()" x-init="load(); setInterval(load, 3000)" class="p-4">
+    <h2 class="text-xl font-bold mb-2">Caddyfile Editor</h2>
+    <textarea x-model="config"
+              class="w-full h-96 font-mono border rounded p-2"
+              x-ref="editor"
+              @keydown="handleKeydown($event)"
+              @input="trackChange()"></textarea>
+    <button @click="save" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+    <p class="mt-2 text-green-600" x-text="message"></p>
+  </div>
+  
+  <script>
+  function caddyConfig() {
+    return {
+      config: '',
+      message: '',
+      undoStack: [],
+      redoStack: [],
+      load() {
+        fetch('/api/caddyfile')
+          .then(r => r.text())
+          .then(text => {
+            this.config = text;
+            this.undoStack = [];
+            this.redoStack = [];
+          })
+          .catch(err => console.error("Load failed", err));
+      },
+      save() {
+        fetch('/api/caddyfile/update', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'text/plain',
+          },
+          body: this.config,
+        })
+        .then(r => r.text())
+        .then(msg => this.message = msg)
+        .catch(err => this.message = 'Error: ' + err);
+      },
+      trackChange() {
+        this.undoStack.push(this.config);
+        // Clear redo stack on new edit
+        this.redoStack = [];
+      },
+      handleKeydown(event) {
+        const textarea = this.$refs.editor;
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+  
+        // Ctrl+S to save
+        if (event.ctrlKey && event.key === 's') {
+          event.preventDefault();
+          this.save();
+          this.message = 'Config saved via Ctrl+S';
+          return;
+        }
+  
+        // Ctrl+Z to undo
+        if (event.ctrlKey && !event.shiftKey && event.key === 'z') {
+          event.preventDefault();
+          if (this.undoStack.length > 0) {
+            this.redoStack.push(this.config);
+            this.config = this.undoStack.pop();
+            this.$nextTick(() => {
+            textarea.selectionStart = textarea.selectionEnd = start - 1;
+          });
+          }
+          return;
+        }
+  
+        // Ctrl+Shift+Z to redo
+        if (event.ctrlKey && event.shiftKey && event.key === 'z') {
+          event.preventDefault();
+          if (this.redoStack.length > 0) {
+            this.undoStack.push(this.config);
+            this.config = this.redoStack.pop();
+          }
+          return;
+        }
+  
+        // Tab to indent
+        if (!event.ctrlKey && event.key === 'Tab') {
+          event.preventDefault();
+  
+          const before = this.config.substring(0, start);
+          const after = this.config.substring(end);
+          this.config = before + '	' + after;
+  
+          this.$nextTick(() => {
+            textarea.selectionStart = textarea.selectionEnd = start + 1;
+          });
+          return;
+        }
+  
+        // Ctrl+Tab to unindent
+        if (event.ctrlKey && event.key === 'Tab') {
+          event.preventDefault();
+  
+          const lines = this.config.split('\n');
+          let pos = 0;
+          let curLine = 0;
+  
+          // Figure out which line the cursor is on
+          for (let i = 0; i < lines.length; i++) {
+            pos += lines[i].length + 1;
+            if (pos > start) {
+              curLine = i;
+              break;
+            }
+          }
+  
+          // Unindent line
+          lines[curLine] = lines[curLine].replace(/^ {1,1}/, '');
+          this.config = lines.join('\n');
+  
+          this.$nextTick(() => {
+            textarea.selectionStart = textarea.selectionEnd = start - 1;
+          });
+  
+          return;
+        }
+      }
+    }
+  }
+  </script>  
+</body>
+</html>

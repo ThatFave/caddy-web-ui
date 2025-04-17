@@ -1,0 +1,10 @@
+services:
+  caddy-web-ui:
+      container_name: caddy-web-ui
+      restart: unless_stopped
+      build: .
+      # ghcr.io/thatfave/caddy-web-ui:latest
+      ports:
+        - 8080:8080
+      volumes:
+        - config:/config
