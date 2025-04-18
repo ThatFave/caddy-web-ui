@@ -15,14 +15,21 @@
   <div x-data="caddyConfig()" x-init="load(); setInterval(load, 3000)" class="p-4">
     <h2 class="text-xl font-bold mb-2">Caddyfile Editor</h2>
     <textarea x-model="config"
-              class="w-full h-96 font-mono border rounded p-2"
-              x-ref="editor"
-              @keydown="handleKeydown($event)"
-              @input="trackChange()"></textarea>
-    <button @click="save" class="mt-2 px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      class="w-full h-96 font-mono border rounded p-2"
+      x-ref="editor"
+      @keydown="handleKeydown($event)"
+      @input="trackChange(); validateCaddyfile();">
+    </textarea>
+    <button @click="save"
+        :disabled="!isValid"
+        class="mt-2 px-4 py-2 rounded text-white"
+        :class="isValid ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'">
+      Save
+    </button>
+    <p class="mt-1 text-sm" :class="isValid ? 'text-green-600' : 'text-red-600'" x-text="validationMessage"></p>
     <p class="mt-2 text-green-600" x-text="message"></p>
   </div>
-  
+
   <script>
   function caddyConfig() {
     return {
@@ -30,6 +37,40 @@
       message: '',
       undoStack: [],
       redoStack: [],
+      validateTimeout: null,
+      isValid: true,
+      validationMessage: '',
+
+      validateCaddyfile() {
+        clearTimeout(this.validateTimeout);
+        this.validateTimeout = setTimeout(() => {
+          fetch('/config/adapt', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'text/caddyfile',
+              'Accept': 'application/json'
+            },
+            body: this.config
+          })
+          .then(r => {
+            if (!r.ok) throw r;
+            return r.json();
+          })
+          .then(() => {
+            this.isValid = true;
+            this.validationMessage = 'Caddyfile is valid ✅';
+          })
+          .catch(async err => {
+            this.isValid = false;
+            try {
+              const data = await err.json();
+              this.validationMessage = '❌ Invalid: ' + data.error;
+            } catch {
+              this.validationMessage = '❌ Validation error';
+            }
+          });
+        }, 500); // debounce
+      },
       load() {
         fetch('/api/caddyfile')
           .then(r => r.text())
@@ -61,7 +102,7 @@
         const textarea = this.$refs.editor;
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
-  
+
         // Ctrl+S to save
         if (event.ctrlKey && event.key === 's') {
           event.preventDefault();
@@ -69,7 +110,7 @@
           this.message = 'Config saved via Ctrl+S';
           return;
         }
-  
+
         // Ctrl+Z to undo
         if (event.ctrlKey && !event.shiftKey && event.key === 'z') {
           event.preventDefault();
@@ -82,7 +123,7 @@
           }
           return;
         }
-  
+
         // Ctrl+Shift+Z to redo
         if (event.ctrlKey && event.shiftKey && event.key === 'z') {
           event.preventDefault();
@@ -92,29 +133,29 @@
           }
           return;
         }
-  
+
         // Tab to indent
         if (!event.ctrlKey && event.key === 'Tab') {
           event.preventDefault();
-  
+
           const before = this.config.substring(0, start);
           const after = this.config.substring(end);
           this.config = before + '	' + after;
-  
+
           this.$nextTick(() => {
             textarea.selectionStart = textarea.selectionEnd = start + 1;
           });
           return;
         }
-  
+
         // Ctrl+Tab to unindent
         if (event.ctrlKey && event.key === 'Tab') {
           event.preventDefault();
-  
+
           const lines = this.config.split('\n');
           let pos = 0;
           let curLine = 0;
-  
+
           // Figure out which line the cursor is on
           for (let i = 0; i < lines.length; i++) {
             pos += lines[i].length + 1;
@@ -123,20 +164,20 @@
               break;
             }
           }
-  
+
           // Unindent line
           lines[curLine] = lines[curLine].replace(/^ {1,1}/, '');
           this.config = lines.join('\n');
-  
+
           this.$nextTick(() => {
             textarea.selectionStart = textarea.selectionEnd = start - 1;
           });
-  
+
           return;
         }
       }
     }
   }
-  </script>  
+  </script>
 </body>
 </html>
