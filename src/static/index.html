@@ -44,7 +44,7 @@
       validateCaddyfile() {
         clearTimeout(this.validateTimeout);
         this.validateTimeout = setTimeout(() => {
-          fetch('/config/adapt', {
+          fetch('/api/caddyfile/validate', {
             method: 'POST',
             headers: {
               'Content-Type': 'text/caddyfile',

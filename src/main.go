@@ -29,6 +29,35 @@ func main() {
 		w.Write(data)
 	})
 
+	http.HandleFunc("/api/caddyfile/validate", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, "Failed to validate Caddyfile: "+err.Error(), 400)
+		}
+
+		req, err := http.NewRequest("POST", caddy_api+"/adapt", bytes.NewReader(body))
+		if err != nil {
+			http.Error(w, "Failed to create reload request: "+err.Error(), 500)
+			return
+		}
+		req.Header.Set("Content-Type", "text/caddyfile")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			http.Error(w, "Failed to send reload request: "+err.Error(), 500)
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != 200 {
+			msg, _ := io.ReadAll(resp.Body)
+			http.Error(w, "Validation failed:\n"+string(msg), resp.StatusCode)
+			return
+		}
+
+		w.Write([]byte("Validation successful"))
+	})
+
 	// Update and reload Caddyfile
 	http.HandleFunc("/api/caddyfile/update", func(w http.ResponseWriter, r *http.Request) {
 		body, err := io.ReadAll(r.Body)
