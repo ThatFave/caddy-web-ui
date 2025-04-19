@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io"
+	"log"
 	"net/http"
 	"os"
 )
@@ -52,6 +53,7 @@ func main() {
 		if resp.StatusCode != 200 {
 			msg, _ := io.ReadAll(resp.Body)
 			http.Error(w, "Validation failed:\n"+string(msg), resp.StatusCode)
+			log.Println(w, "Validation failed:\n"+string(msg), resp.StatusCode)
 			return
 		}
 
