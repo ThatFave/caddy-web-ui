@@ -98,6 +98,7 @@ func main() {
 			return
 		}
 
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Reload successful"))
 	})
 
