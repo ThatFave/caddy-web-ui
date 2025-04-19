@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 func main() {
@@ -38,17 +39,19 @@ func main() {
 
 		req, err := http.NewRequest("POST", caddy_api+"/adapt", bytes.NewReader(body))
 		if err != nil {
-			http.Error(w, "Failed to create reload request: "+err.Error(), 500)
+			http.Error(w, "Failed to create validation request: "+err.Error(), 500)
 			return
 		}
 		req.Header.Set("Content-Type", "text/caddyfile")
 
 		resp, err := http.DefaultClient.Do(req)
 		if err != nil {
-			http.Error(w, "Failed to send reload request: "+err.Error(), 500)
+			http.Error(w, "Failed to send validation request: "+err.Error(), 500)
 			return
 		}
 		defer resp.Body.Close()
+
+		log.Println(w, "response: "+strconv.Itoa(resp.StatusCode), resp.StatusCode)
 
 		if resp.StatusCode != 200 {
 			msg, _ := io.ReadAll(resp.Body)
